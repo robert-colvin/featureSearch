@@ -1,8 +1,8 @@
 import itertools
 
 def main():
-	fileName = 'CS205_SMALLtestdata__34.txt'
-#	fileName = 'test.txt'
+#	fileName = 'CS205_SMALLtestdata__34.txt'
+	fileName = 'test63.txt'
 	f = open(fileName)
 	
 	dataPoints = []
@@ -30,10 +30,49 @@ def main():
 		(bestFeatures,bestAccuracy) = featureSearchForward(dataPoints,10)
 	if algChoice == '2':
 		(bestFeatures,bestAccuracy) = featureSearchBackward(dataPoints,10)
+	if algChoice == '3':
+		(bestFeatures,bestAccuracy) = featureSearchForwardPruned(dataPoints,10)
 
 	print('Finished search!! The best feature subset is',bestFeatures,'which has an accuracy of',bestAccuracy)
 
 	return
+
+def featureSearchForwardPruned(dataPoints,numFeatures):
+	currentFeatures = []
+	bestFeatures = []
+	bestAccuracy = 0.0
+
+	print('\nThis dataset has',numFeatures,'features (not including the class attribute), with',len(dataPoints),'instances')
+	currentFeatures.extend(range(numFeatures-1))
+	fullFeatureAccuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,numFeatures-1,'forward')
+	print('\nRunning nearest neighbor with all', numFeatures,'features, using "leaving one out" evaluation, I get an accuracy of',fullFeatureAccuracy)
+	currentFeatures = []	
+	
+	print('\nBeginning search\n')
+	#this loop traverses down the search tree
+	for i in range(numFeatures):
+		featureToAddAtThisLevel = []
+		bestSoFarAccuracy = 0.0
+		#this loop traverses over the features
+		for k in range(numFeatures):
+			if k not in currentFeatures:
+				accuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,k,'forward')
+				print('\tUsing feature(s) {',k,',',str(currentFeatures).strip('[]'),'}, accuracy is',accuracy,'%')
+				if accuracy > bestSoFarAccuracy:
+					bestSoFarAccuracy = accuracy
+					featureToAddAtThisLevel = [k]
+
+		currentFeatures.extend(featureToAddAtThisLevel)
+		print()
+		if bestSoFarAccuracy > bestAccuracy:
+			bestFeatures = currentFeatures.copy()
+			bestAccuracy = bestSoFarAccuracy
+		elif bestSoFarAccuracy < bestAccuracy:
+			print('Warning, Accuracy has decreased! Continuing search in case of local maxima')
+		print('Feature set',currentFeatures,'was best, accuracy is',bestSoFarAccuracy,'\n')
+			
+	
+	return (bestFeatures,bestAccuracy)
 
 def featureSearchBackward(dataPoints,numFeatures):
 	currentFeatures = []
@@ -130,6 +169,8 @@ def leaveOneOutCrossValidation(dataPoints,currentFeatures,featureIndex,mode):
 				features1 = []
 				features2 = []
 				for cfIndex in currentFeatures:
+					if cfIndex == featureIndex and mode == 'backward':
+						continue
 					features1.append(leftOutPoint[1][cfIndex])
 					features2.append(compareAgainstPoint[1][cfIndex])
 				if mode == 'forward':
