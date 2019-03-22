@@ -41,25 +41,28 @@ def featureSearchBackward(dataPoints,numFeatures):
 	bestAccuracy = 0.0
 
 	print('\nThis dataset has',numFeatures,'features (not including the class attribute), with',len(dataPoints),'instances')
-	currentFeatures.extend(range(numFeatures-1))
-	fullFeatureAccuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,numFeatures-1)
+	currentFeatures.extend(range(numFeatures))
+	fullFeatureAccuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,numFeatures-1,'backward')
 	print('\nRunning nearest neighbor with all', numFeatures,'features, using "leaving one out" evaluation, I get an accuracy of',fullFeatureAccuracy)
-	
+		
 	print('\nBeginning search\n')
 	#this loop traverses down the search tree
 	for i in range(numFeatures):
-		featureToKillAtThisLevel = []
+		featureToKillAtThisLevel = -1
 		bestSoFarAccuracy = 0.0
 		#this loop traverses over the features
 		for k in range(numFeatures):
 			if k in currentFeatures:
-				accuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,k)
-				print('\tUsing feature(s) {',k,',',str(currentFeatures).strip('[]'),'}, accuracy is',accuracy,'%')
+				accuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,k,'backward')
+				printFeatures = currentFeatures.copy()
+				printFeatures.remove(k)
+				print('\tUsing feature(s) {',str(printFeatures).strip('[]'),'}, accuracy is',accuracy,'%')
 				if accuracy > bestSoFarAccuracy:
 					bestSoFarAccuracy = accuracy
-					featureToAddAtThisLevel = [k]
+					featureToKillAtThisLevel = k
 
-		currentFeatures.extend(featureToAddAtThisLevel)
+		currentFeatures.remove(featureToKillAtThisLevel)
+#		currentFeatures = [x for x in currentFeatures if x not in featureToKillAtThisLevel]
 		print()
 		if bestSoFarAccuracy > bestAccuracy:
 			bestFeatures = currentFeatures.copy()
@@ -78,7 +81,7 @@ def featureSearchForward(dataPoints,numFeatures):
 
 	print('\nThis dataset has',numFeatures,'features (not including the class attribute), with',len(dataPoints),'instances')
 	currentFeatures.extend(range(numFeatures-1))
-	fullFeatureAccuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,numFeatures-1)
+	fullFeatureAccuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,numFeatures-1,'forward')
 	print('\nRunning nearest neighbor with all', numFeatures,'features, using "leaving one out" evaluation, I get an accuracy of',fullFeatureAccuracy)
 	currentFeatures = []	
 	
@@ -90,7 +93,7 @@ def featureSearchForward(dataPoints,numFeatures):
 		#this loop traverses over the features
 		for k in range(numFeatures):
 			if k not in currentFeatures:
-				accuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,k)
+				accuracy = leaveOneOutCrossValidation(dataPoints,currentFeatures,k,'forward')
 				print('\tUsing feature(s) {',k,',',str(currentFeatures).strip('[]'),'}, accuracy is',accuracy,'%')
 				if accuracy > bestSoFarAccuracy:
 					bestSoFarAccuracy = accuracy
@@ -115,13 +118,13 @@ def euclideanDistance(features1, features2):
 	distance = distance**(0.5)
 	return distance
 
-def leaveOneOutCrossValidation(dataPoints,currentFeatures,featureIndex):
+def leaveOneOutCrossValidation(dataPoints,currentFeatures,featureIndex,mode):
 #	print(currentFeatures,featureIndex)
 	numCorrectClassifications = 0.0
 	numAttempts = 0.0
 	for leftOutPoint in dataPoints:
 		nearestNeighbor = 0
-		nearestDistance = 10000000000.0
+		nearestDistance = 100000000000000000000000000000.0
 		for compareAgainstPoint in dataPoints:
 			if leftOutPoint != compareAgainstPoint:
 				features1 = []
@@ -129,8 +132,10 @@ def leaveOneOutCrossValidation(dataPoints,currentFeatures,featureIndex):
 				for cfIndex in currentFeatures:
 					features1.append(leftOutPoint[1][cfIndex])
 					features2.append(compareAgainstPoint[1][cfIndex])
-				features1.append(leftOutPoint[1][featureIndex])
-				features2.append(compareAgainstPoint[1][featureIndex])
+				if mode == 'forward':
+					features1.append(leftOutPoint[1][featureIndex])
+					features2.append(compareAgainstPoint[1][featureIndex])
+		#		print(features1,features2)
 				
 				distance = euclideanDistance(features1,features2)
 				if distance < nearestDistance:
